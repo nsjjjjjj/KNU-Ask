@@ -1,0 +1,4 @@
+import { useEffect, useState } from 'react'
+
+const stages=['질문 조건을 확인하고 있어요','공식 공지를 찾고 있어요','답변 근거를 검토하고 있어요']
+export function LoadingBubble() { const [stage,setStage]=useState(0);useEffect(()=>{const timer=window.setInterval(()=>setStage(value=>Math.min(value+1,stages.length-1)),1200);return()=>window.clearInterval(timer)},[]);return <div className="flex gap-2.5" role="status" aria-live="polite"><span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white font-bold">K</span><div className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm"><span className="flex gap-1" aria-hidden="true"><i className="typing-dot"/><i className="typing-dot"/><i className="typing-dot"/></span>{stages[stage]}</div></div> }

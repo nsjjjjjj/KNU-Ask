@@ -1,0 +1,9 @@
+import { AlertCircle } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+
+export function ExitModal({ open, onConfirm, onCancel }: { open:boolean; onConfirm:()=>void; onCancel:()=>void }) {
+  const cancelRef=useRef<HTMLButtonElement>(null)
+  useEffect(()=>{if(!open)return;const previous=document.activeElement as HTMLElement|null;cancelRef.current?.focus();const key=(event:KeyboardEvent)=>{if(event.key==='Escape')onCancel()};document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.focus()}},[open,onCancel])
+  if(!open)return null
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)onCancel()}}><section role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description" className="w-full max-w-sm animate-modal rounded-2xl bg-white p-6 shadow-2xl"><div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-red-50 text-red-600"><AlertCircle size={24}/></div><h2 id="exit-title" className="text-center text-lg font-extrabold text-slate-900">문의를 종료하시겠습니까?</h2><p id="exit-description" className="mt-2 text-center text-sm text-slate-500">현재 문의 내용은 저장되지 않으며 채팅이 초기화됩니다.</p><div className="mt-6 grid grid-cols-2 gap-2"><button ref={cancelRef} onClick={onCancel} className="min-h-11 cursor-pointer rounded-xl border border-slate-300 font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">계속 문의하기</button><button onClick={onConfirm} className="min-h-11 cursor-pointer rounded-xl bg-red-600 font-bold text-white transition hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">문의 종료</button></div></section></div>
+}

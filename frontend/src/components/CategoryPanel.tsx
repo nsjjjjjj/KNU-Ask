@@ -1,0 +1,6 @@
+import { BookOpen, CalendarDays, GraduationCap, Landmark, Lightbulb, Shield, WalletCards } from 'lucide-react'
+
+const icons = [CalendarDays,WalletCards,BookOpen,GraduationCap,Shield,Lightbulb,Landmark]
+export function CategoryPanel({ categories, onSelect }: { categories: string[]; onSelect: (category: string) => void }) {
+  return <section aria-labelledby="category-title" className="animate-enter border-b border-slate-200 bg-brand-50/70 px-4 py-4 md:px-6"><div className="mx-auto max-w-5xl"><h2 id="category-title" className="mb-3 text-sm font-bold text-slate-800">문의 분야를 선택해 주세요</h2><div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">{categories.map((category,index) => { const Icon=icons[index%icons.length]; return <button key={category} onClick={() => onSelect(category)} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-brand-100 bg-white p-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"><Icon size={21} className="text-brand-600"/>{category}</button>})}</div></div></section>
+}

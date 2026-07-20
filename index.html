@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="강남대학교 홈페이지 AI 공지 기능 시연용 프로토타입">
+  <title>강남대학교 | AI 공지 도우미 데모</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b2749'/%3E%3Cpath d='M8 7v18M24 7v18M8 16h16' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 바로가기</a>
+
+  <div class="demo-strip" role="status">
+    <span class="demo-dot" aria-hidden="true"></span>
+    기능 시연용 프로토타입 · 강남대학교 공식 서비스가 아닙니다
+  </div>
+
+  <header class="site-header">
+    <div class="utility-bar">
+      <div class="container utility-inner">
+        <span>THE FIRST UNIVERSITY IN KOREA</span>
+        <nav aria-label="보조 메뉴">
+          <a href="#">로그인</a>
+          <a href="#">사이트맵</a>
+          <a href="#">LANGUAGE</a>
+          <button class="icon-button" type="button" aria-label="통합검색 열기" data-search-open>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <div class="container main-nav-row">
+      <a class="brand" href="#" aria-label="강남대학교 홈">
+        <img src="https://web.kangnam.ac.kr/comm/cmnFile/thumbnail.do?encSvrFileNm=e599269544be89c30343a5b6d5d0b372bd39994daa131865784eb3da73f4edebd0e9678a8eceaf3d110ed1574ae1d458ea4a5b4e54fab49e2b6bc2a32d6bdea9&width=173&height=48" width="173" height="48" alt="강남대학교">
+      </a>
+      <nav class="primary-nav" aria-label="주 메뉴">
+        <a href="#about">대학소개</a>
+        <a href="#college">대학</a>
+        <a href="#graduate">대학원</a>
+        <a href="#admission">입학안내</a>
+        <a href="#life">대학생활</a>
+        <a href="#news">KNU광장</a>
+      </nav>
+      <button class="menu-button" type="button" aria-label="모바일 메뉴 열기" aria-expanded="false" data-menu-toggle>
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="mobile-nav" data-mobile-nav hidden>
+      <a href="#about">대학소개</a><a href="#college">대학</a><a href="#graduate">대학원</a>
+      <a href="#admission">입학안내</a><a href="#life">대학생활</a><a href="#news">KNU광장</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-grid container">
+        <article class="hero-lead">
+          <img src="https://web.kangnam.ac.kr/comm/cmnFile/crop.do?width=1000&height=750&x=0&y=0&encSvrFileNm=f5580787cd3ae5786ad1758dfa70763b9164cc316e14208869a80c475527d1c688d3cbfdf960ce0a0d112117e616ed666153e5b4a296601ddc93e0ba17e5180e" alt="강남대학교 주요 소식" width="1000" height="750">
+          <div class="hero-shade"></div>
+          <div class="hero-copy">
+            <span class="eyebrow">KANGNAM ISSUE</span>
+            <h1 id="hero-title">THE VOICE OF<br>KANGNAM</h1>
+            <p>강남의 목소리로 캠퍼스의 오늘을 만납니다.</p>
+            <a class="outline-link" href="#news">자세히 보기 <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="hero-pager" aria-label="메인 소식 슬라이드">
+            <button type="button" aria-label="1번 소식" class="active"></button>
+            <button type="button" aria-label="2번 소식"></button>
+            <button type="button" aria-label="3번 소식"></button>
+          </div>
+        </article>
+
+        <aside class="ai-card" aria-labelledby="ai-title">
+          <div class="ai-orbit" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"></path><circle cx="12" cy="12" r="4"></circle></svg>
+          </div>
+          <span class="eyebrow">KNU ASK · AI BETA</span>
+          <h2 id="ai-title">복잡한 공지를<br>한눈에 확인하세요</h2>
+          <p>대상, 마감일, 첨부파일과 담당부서까지 AI가 핵심만 정리해 드립니다.</p>
+          <button class="ai-cta" type="button" data-ai-open>
+            AI 공지 도우미 체험
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          </button>
+          <div class="ai-preview" aria-label="AI 분석 예시">
+            <span>D-10</span>
+            <div><strong>2026-2학기 복학 신청</strong><small>교무팀 · 07.30 마감</small></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="dashboard container" id="news" aria-labelledby="notice-heading">
+      <article class="notice-panel">
+        <div class="section-head">
+          <div class="notice-tabs" role="tablist" aria-label="공지 분류">
+            <button class="active" role="tab" aria-selected="true" data-tab="academic">학사</button>
+            <button role="tab" aria-selected="false" data-tab="scholarship">장학</button>
+            <button role="tab" aria-selected="false" data-tab="career">취·창업</button>
+          </div>
+          <a href="https://web.kangnam.ac.kr/menu/f19069e6134f8f8aa7f689a4a675e66f.do?paginationInfo.currentPageNo=1&searchMenuSeq=0" target="_blank" rel="noreferrer">전체보기 <span aria-hidden="true">＋</span></a>
+        </div>
+        <h2 class="sr-only" id="notice-heading">공지사항</h2>
+        <ul class="notice-list" data-notice-list></ul>
+      </article>
+
+      <article class="schedule-panel">
+        <div class="section-head"><h2>학사일정</h2><a href="#">전체보기 <span aria-hidden="true">＋</span></a></div>
+        <div class="schedule-item"><time datetime="2026-07-20">07.20</time><p><strong>복학 신청기간</strong><span>07.20(월) ~ 07.30(목)</span></p></div>
+        <div class="schedule-item"><time datetime="2026-07-27">07.27</time><p><strong>학사학위취득유예 신청</strong><span>07.27(월) ~ 07.29(수)</span></p></div>
+        <form class="phone-search" data-phone-form>
+          <label for="phone-query">교내 전화번호 검색</label>
+          <div><input id="phone-query" type="search" placeholder="성명/부서명을 입력해주세요" autocomplete="off"><button type="submit" aria-label="전화번호 검색"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></button></div>
+          <p data-phone-result aria-live="polite"></p>
+        </form>
+      </article>
+    </section>
+
+    <section class="quick-services" aria-labelledby="service-heading">
+      <div class="container"><h2 id="service-heading">자주 찾는 서비스</h2><div class="service-grid">
+        <a href="#"><span class="service-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"></path></svg></span><span>종합정보시스템</span></a>
+        <a href="#"><span class="service-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 7l9 6 9-6"></path></svg></span><span>메일스튜디오</span></a>
+        <a href="#"><span class="service-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"></path></svg></span><span>인터넷증명발급</span></a>
+        <a href="#"><span class="service-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5l8-3 8 3v14l-8 3zM12 2v20M8 7h1M15 7h1M8 11h1M15 11h1"></path></svg></span><span>이러닝캠퍼스</span></a>
+        <a href="#"><span class="service-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.1 7-12a7 7 0 1 0-14 0c0 6.9 7 12 7 12z"></path><circle cx="12" cy="9" r="2"></circle></svg></span><span>캠퍼스맵</span></a>
+      </div></div>
+    </section>
+  </main>
+
+  <div class="search-overlay" data-search-overlay hidden>
+    <button class="overlay-close" type="button" aria-label="검색 닫기" data-search-close>×</button>
+    <form><label for="site-search">무엇을 찾으시나요?</label><div><input id="site-search" type="search" placeholder="검색어를 입력해주세요"><button type="submit">검색</button></div></form>
+  </div>
+
+  <div class="drawer-scrim" data-drawer-scrim hidden></div>
+  <aside class="ai-drawer" aria-labelledby="drawer-title" aria-hidden="true" data-ai-drawer inert>
+    <header>
+      <div><span class="eyebrow">KNU ASK · AI BETA</span><h2 id="drawer-title">AI 공지 도우미</h2></div>
+      <button class="icon-button" type="button" aria-label="AI 도우미 닫기" data-ai-close>×</button>
+    </header>
+    <div class="drawer-body">
+      <div class="analysis-state"><span class="status-badge">분석 완료</span><small>오늘 10:52 기준</small></div>
+      <h3>2026-2학기 복학 신청 안내</h3>
+      <p class="summary">휴학생을 대상으로 하는 복학 신청 공지입니다. 종합정보시스템에서 신청하며, 마감 전 학적 상태를 확인하세요.</p>
+      <dl class="facts">
+        <div><dt>신청 대상</dt><dd>2026-2학기 복학 예정 휴학생</dd></div>
+        <div><dt>신청 기간</dt><dd><strong>07.20 ~ 07.30 17:00</strong></dd></div>
+        <div><dt>신청 방법</dt><dd>종합정보시스템 → 학적 → 복학 신청</dd></div>
+        <div><dt>담당 부서</dt><dd>교무팀 · 031-280-3544</dd></div>
+      </dl>
+      <section class="attachment-card"><div class="file-icon" aria-hidden="true">PDF</div><div><strong>복학신청 안내문.pdf</strong><span>3페이지 · 텍스트 분석 완료</span></div><button type="button" data-attachment-toggle aria-expanded="false">요약 보기</button></section>
+      <div class="attachment-summary" data-attachment-summary hidden><strong>첨부파일 핵심</strong><p>군 복학자는 전역증명서 또는 병적증명서가 필요하며, 조기 복학 시 수업일수 요건을 확인해야 합니다.</p></div>
+      <button class="calendar-button" type="button" data-calendar>마감 일정에 추가</button>
+      <p class="ai-notice">AI가 생성한 요약입니다. 정확한 내용은 원문 공지를 확인하세요.</p>
+    </div>
+  </aside>
+
+  <div class="toast" role="status" aria-live="polite" data-toast hidden>일정이 추가되었습니다.</div>
+  <script src="script.js"></script>
+</body>
+</html>

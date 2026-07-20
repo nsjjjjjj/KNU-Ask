@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.knuask.codex-enrichment</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/noseongjun/Library/Application Support/KNU-Ask/codex_ingestion_worker.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/noseongjun/Library/Application Support/KNU-Ask</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>ADMIN_API_TOKEN</key>
+        <string>local-dev-admin</string>
+        <key>KNUASK_API_BASE</key>
+        <string>http://localhost:8080/api</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/noseongjun/Library/Logs/KNU-Ask-codex-worker.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/noseongjun/Library/Logs/KNU-Ask-codex-worker-error.log</string>
+</dict>
+</plist>

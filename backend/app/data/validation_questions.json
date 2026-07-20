@@ -1,0 +1,74 @@
+[
+  {
+    "id": "course-registration-2026-2",
+    "question": "2026학년도 2학기 수강신청 일정과 신청 방법 알려줘",
+    "sourceIds": ["9e2ff17d4aeac0a0e88ab33bf84a1a9d"],
+    "expectedTitleContains": "2026-2학기 수강신청 안내",
+    "requiredFields": ["application_period", "application_method", "action_guide", "department_phone"],
+    "expectedModes": ["action_guide"],
+    "qualityChecks": ["모집기간과 수행기간을 혼동하지 않음", "순서형 절차 제공", "공식 원문 제공"]
+  },
+  {
+    "id": "leave-application",
+    "question": "일반휴학 신청 방법과 준비 서류, 담당자 연락처 알려줘",
+    "sourceIds": ["academic-guide:leave"],
+    "expectedTitleContains": "일반휴학 신청 방법",
+    "requiredFields": ["application_method", "required_documents", "action_guide", "department_phone"],
+    "expectedModes": ["action_guide"],
+    "qualityChecks": ["특수휴학과 일반휴학 절차를 섞지 않음", "조건부 서류를 대상과 함께 표시"]
+  },
+  {
+    "id": "return-application",
+    "question": "복학 신청 방법과 신청 기간 알려줘",
+    "sourceIds": ["academic-guide:return", "be6f8bd1151a1d7fb2aa5be47cb5f7ce"],
+    "expectedTitleContains": "복학",
+    "requiredFields": ["application_period", "application_method", "action_guide", "department_phone"],
+    "expectedModes": ["action_guide", "deterministic"],
+    "qualityChecks": ["상시 절차와 이번 학기 기간을 함께 사용", "기간 근거 공지를 구분"]
+  },
+  {
+    "id": "credit-registration-and-tuition",
+    "question": "학점등록대상자 수강신청과 등록금 납부 절차 알려줘",
+    "sourceIds": ["7b0e87006790ad0520c24c16a46e0325"],
+    "expectedTitleContains": "학점등록대상자 2026-2학기",
+    "requiredFields": ["application_period", "application_method", "action_guide", "fee_information", "department_phone"],
+    "expectedModes": ["action_guide"],
+    "qualityChecks": ["수강신청과 등록금 납부를 별도 단계로 표시", "두 업무의 마감을 구분"]
+  },
+  {
+    "id": "national-scholarship-2026-2",
+    "question": "2026학년도 2학기 국가장학금 1차 신청 대상과 방법 알려줘",
+    "sourceIds": ["2b2354c698c74c9074880e1ef12454da"],
+    "expectedTitleContains": "2026-2학기 국가장학금 1차",
+    "requiredFields": ["application_period", "eligibility_notes", "application_method", "action_guide", "department_phone"],
+    "expectedModes": ["action_guide"],
+    "qualityChecks": ["마감된 신청을 진행 중으로 표시하지 않음", "재학생·복학생 등 대상 조건 표시"]
+  },
+  {
+    "id": "mobile-attendance",
+    "question": "모바일 전자출결 사용 방법 알려줘",
+    "sourceIds": ["35d9af9aee8100b854ef96860b70053d"],
+    "expectedTitleContains": "모바일 전자출결시스템 안내",
+    "requiredFields": ["application_method", "action_guide", "department_phone"],
+    "expectedModes": ["action_guide"],
+    "qualityChecks": ["설치·로그인·출결 확인 순서를 제공", "기기별 예외를 추측하지 않음"]
+  },
+  {
+    "id": "early-graduation",
+    "question": "조기졸업 신청 방법과 조건 알려줘",
+    "sourceIds": ["72ad243090493618567b494e56174f92"],
+    "expectedTitleContains": "조기졸업 신청 안내",
+    "requiredFields": ["application_period", "eligibility_notes", "required_documents", "action_guide", "department_phone"],
+    "expectedModes": ["action_guide"],
+    "qualityChecks": ["성적·학기 등 자격조건을 원문 범위에서 표시", "제출 장소와 서류 표시"]
+  },
+  {
+    "id": "reserve-forces-gap",
+    "question": "예비군 신고는 어디에 제출해?",
+    "sourceIds": [],
+    "expectedTitleContains": "예비군",
+    "requiredFields": ["application_method", "department_phone"],
+    "expectedModes": ["action_guide", "deterministic", "department_handoff"],
+    "qualityChecks": ["근거가 없으면 추측하지 않음", "수집 범위 누락으로 기록"]
+  }
+]
