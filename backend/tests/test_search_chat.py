@@ -49,6 +49,7 @@ def test_vector_search_returns_relevant_notice(db):
 def test_real_semantic_embedding_can_rescue_a_paraphrase_without_keyword_overlap(db):
     class SemanticAI:
         embedding_provider = "ollama"
+        embedding_model_name = "test-semantic"
 
         @staticmethod
         def embedding(_message):
@@ -58,8 +59,10 @@ def test_real_semantic_embedding_can_rescue_a_paraphrase_without_keyword_overlap
     for notice in db.scalars(select(Notice)):
         vector = [1.0, 0.0] if notice.id == leave.id else [0.0, 1.0]
         notice.embedding_record.embedding = vector
+        notice.embedding_record.embedding_model = "test-semantic"
         for chunk in notice.chunks:
             chunk.embedding = vector
+            chunk.embedding_model = "test-semantic"
     db.commit()
 
     results = HybridSearch(db, SemanticAI()).search(
