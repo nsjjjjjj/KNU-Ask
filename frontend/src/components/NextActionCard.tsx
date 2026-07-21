@@ -2,7 +2,7 @@ import { ArrowRight, CalendarClock } from 'lucide-react'
 import type { NextAction } from '../types'
 
 export function NextActionCard({ action }: { action: NextAction }) {
-  const deadline = action.deadline ? new Intl.DateTimeFormat('ko-KR', { dateStyle:'medium', timeStyle:'short' }).format(new Date(action.deadline)) : null
+  const deadline = action.deadline ? new Intl.DateTimeFormat('ko-KR', { dateStyle:'medium', timeStyle:'short', timeZone:'Asia/Seoul' }).format(new Date(action.deadline)) : null
   return <section aria-label="다음에 할 일" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
     <p className="text-xs font-bold uppercase tracking-[0.12em] text-amber-800">다음에 할 일</p>
     <p className="mt-1 font-extrabold text-slate-900">{action.label}</p>

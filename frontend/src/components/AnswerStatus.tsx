@@ -23,6 +23,7 @@ function deadlineLabel(value?: string | null) {
   }
   const parts = new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'Asia/Seoul',
   }).formatToParts(parsed)
   const valueOf = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value
   return `${valueOf('year')}.${valueOf('month')}.${valueOf('day')} ${valueOf('hour')}:${valueOf('minute')}`

@@ -2,7 +2,7 @@ import { AlertTriangle, ArrowUpRight, CalendarDays, CheckCircle2, ClipboardList,
 import type { ActionGuide, ChatStatus } from '../types'
 
 function periodLabel(start?: string | null, end?: string | null) {
-  const format = (value: string) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  const format = (value: string) => new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Seoul' }).format(new Date(value))
   if (start && end) return `${format(start)} ~ ${format(end)}`
   if (end) return `${format(end)}까지`
   if (start) return `${format(start)}부터`
