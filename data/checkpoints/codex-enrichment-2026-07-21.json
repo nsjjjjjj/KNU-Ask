@@ -1,0 +1,49 @@
+{
+  "checkpointVersion": 1,
+  "createdAt": "2026-07-21T21:20:01+09:00",
+  "scope": {
+    "jobType": "codex_enrichment",
+    "jobIdGreaterThan": 3808
+  },
+  "status": {
+    "completed": 651,
+    "paused": 2058,
+    "running": 0,
+    "pending": 0,
+    "failed": 0
+  },
+  "lastCompleted": {
+    "jobId": 4445,
+    "noticeId": 647,
+    "sourceType": "official_notice",
+    "title": "[CTL] 2025-2학기 '학습공동체' 모집 안내(~9/14)",
+    "finishedAt": "2026-07-21T21:20:01.159616+09:00"
+  },
+  "pausedRange": {
+    "firstJobId": 4450,
+    "lastJobId": 6517
+  },
+  "pausedBySource": {
+    "academic_guide": 9,
+    "career_program": 45,
+    "dormitory_notice": 10,
+    "event": 1837,
+    "international_notice": 13,
+    "library_guide": 3,
+    "official_notice": 107,
+    "student_service": 9,
+    "student_service_notice": 19,
+    "university_regulation": 6
+  },
+  "integrity": {
+    "rawSourcesDeleted": false,
+    "completedResultsDeleted": false,
+    "qwenResultsPersisted": false,
+    "databaseCheckpointColumn": "processing_jobs.status=paused"
+  },
+  "resume": {
+    "step1": "UPDATE processing_jobs SET status='pending', started_at=NULL, finished_at=NULL, error_message=NULL WHERE id > 3808 AND status='paused';",
+    "step2": "python3 scripts/install_codex_launch_agent.py",
+    "step3": "python3 scripts/codex_ingestion_worker.py --drain --empty-checks 5"
+  }
+}

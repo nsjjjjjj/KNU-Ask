@@ -15,4 +15,5 @@ pytest-cov==6.2.1
 pypdf==5.8.0
 Pillow==11.3.0
 pytesseract==0.3.13
+pyhwp==0.1b15
 APScheduler==3.11.0

@@ -12,10 +12,19 @@
     "id": "leave-application",
     "question": "일반휴학 신청 방법과 준비 서류, 담당자 연락처 알려줘",
     "sourceIds": ["academic-guide:leave"],
-    "expectedTitleContains": "일반휴학 신청 방법",
+    "expectedTitleContains": "[상시 학사안내] 휴학",
     "requiredFields": ["application_method", "required_documents", "action_guide", "department_phone"],
     "expectedModes": ["action_guide"],
-    "qualityChecks": ["특수휴학과 일반휴학 절차를 섞지 않음", "조건부 서류를 대상과 함께 표시"]
+    "qualityChecks": ["특수휴학과 일반휴학 절차를 섞지 않음", "일반휴학은 별도 구비서류 없음으로 표시"]
+  },
+  {
+    "id": "leave-documents-only",
+    "question": "일반휴학 준비서류가 뭐야?",
+    "sourceIds": ["academic-guide:leave"],
+    "expectedTitleContains": "[상시 학사안내] 휴학",
+    "requiredFields": ["required_documents"],
+    "expectedModes": ["action_guide"],
+    "qualityChecks": ["별도 구비서류 없음을 누락으로 처리하지 않음", "다른 휴학 유형의 서류를 섞지 않음"]
   },
   {
     "id": "return-application",
@@ -24,7 +33,7 @@
     "expectedTitleContains": "복학",
     "requiredFields": ["application_period", "application_method", "action_guide", "department_phone"],
     "expectedModes": ["action_guide", "deterministic"],
-    "qualityChecks": ["상시 절차와 이번 학기 기간을 함께 사용", "기간 근거 공지를 구분"]
+    "qualityChecks": ["이번 학기 공식 안내의 기간과 절차를 함께 사용", "다른 학기 날짜를 섞지 않음"]
   },
   {
     "id": "credit-registration-and-tuition",
@@ -55,12 +64,12 @@
   },
   {
     "id": "early-graduation",
-    "question": "조기졸업 신청 방법과 조건 알려줘",
+    "question": "2026학년도 1학기 조기졸업 신청 기간과 방법, 조건 알려줘",
     "sourceIds": ["72ad243090493618567b494e56174f92"],
     "expectedTitleContains": "조기졸업 신청 안내",
-    "requiredFields": ["application_period", "eligibility_notes", "required_documents", "action_guide", "department_phone"],
+    "requiredFields": ["application_period", "eligibility_notes", "action_guide", "department_phone"],
     "expectedModes": ["action_guide"],
-    "qualityChecks": ["성적·학기 등 자격조건을 원문 범위에서 표시", "제출 장소와 서류 표시"]
+    "qualityChecks": ["성적·학기 등 자격조건을 원문 범위에서 표시", "온라인 신청 경로와 선발 결과 확인 단계 표시"]
   },
   {
     "id": "reserve-forces-gap",
@@ -69,6 +78,6 @@
     "expectedTitleContains": "예비군",
     "requiredFields": ["application_method", "department_phone"],
     "expectedModes": ["action_guide", "deterministic", "department_handoff"],
-    "qualityChecks": ["근거가 없으면 추측하지 않음", "수집 범위 누락으로 기록"]
+    "qualityChecks": ["공식 상시 예비군 안내를 근거로 사용", "근거서류 직접 신고와 긴급 유선 예외를 구분"]
   }
 ]

@@ -12,8 +12,47 @@ CONTACT_PHONE_PATTERN = re.compile(r"(?<!\d)(0\d{1,2})\s*[-)]\s*(\d{3,4})\s*-\s*
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
 STUDENT_ID_PATTERN = re.compile(r"(?<!\d)(?:20)?\d{8,10}(?!\d)")
 ACCOUNT_PATTERN = re.compile(r"(?<!\d)\d{3,6}-\d{2,6}-\d{3,7}(?!\d)")
+NAMED_PERSON_PATTERN = re.compile(r"(?:이름|성명|본인)\s*[:：은는]?\s*[가-힣]{2,4}(?:입니다|이에요|예요)?")
+PERSONAL_GRADE_PATTERN = re.compile(
+    r"(?:내|제|본인)?\s*(?:성적|평점|학점)\s*[:：은는]?\s*(?:[0-4](?:\.\d{1,2})?|[A-F][+-]?)\b",
+    re.I,
+)
+DANGEROUS_ACTION_PATTERN = re.compile(
+    r"(?:"
+    r"불\s*(?:을\s*)?지르|불태우|방화(?:하|를\s*하)|화염병|"
+    r"폭탄|폭발물|사제\s*폭발|테러(?:하|를\s*하)|"
+    r"(?:사람|학생|교직원|선생|교수|친구|누군가|놈|새끼)?\s*(?:을|를)?\s*"
+    r"(?:죽이|살해하|살인(?:하|을\s*하)?|찌르|다치게\s*하|공격하)|"
+    r"강간(?:하|을\s*하)?|성폭행(?:하|을\s*하)?|성추행(?:하|을\s*하)?|"
+    r"총\s*(?:을\s*)?쏘|독극물|독\s*(?:을\s*)?타"
+    r")",
+    re.I,
+)
+DANGEROUS_INTENT_PATTERN = re.compile(
+    r"(?:"
+    r"하고\s*싶|하\s*고싶|하려고|하려면|할까|하자|하겠|해버리|해\s*줘|"
+    r"어디(?:에|서|가)?|어느\s*(?:곳|건물|장소)|방법|요령|순서|준비물|추천|"
+    r"(?:가장|제일)?\s*(?:불\s*(?:을\s*)?지르|불태우|공격하|찌르|죽이|살인하|강간하|성폭행하|성추행하)[^.!?]{0,20}(?:좋|적당|쉬운|최적)|"
+    r"잘\s*(?:퍼지|번지|타|죽)|빠르게|효과적|최대한|피해를?\s*(?:크게|많이)|"
+    r"몰래|들키지|안\s*들[키켜]|안\s*걸리|추적을?\s*피하|증거를?\s*(?:없애|숨기)|"
+    r"만드는\s*법|제조|설치"
+    r")",
+    re.I,
+)
+BENIGN_SAFETY_CONTEXT_PATTERN = re.compile(
+    r"(?:예방|대피|진압|소화|안전\s*교육|신고(?:해야|하는|할|해|하려|방법)|"
+    r"어떻게\s*(?:막|말리)|구조|응급|피해\s*복구|법적\s*처벌|"
+    r"범죄\s*사례|사건\s*(?:기사|개요)|역사적\s*사건|뜻이\s*뭐)",
+    re.I,
+)
+HARM_REPORTING_CONTEXT_PATTERN = re.compile(
+    r"(?:당했|당한|피해(?:를|자|가)?|목격|신고|위협|협박|실제\s*위험|"
+    r"누군가\s*(?:하려|하겠)|친구가\s*(?:하려|당)|도움\s*(?:요청|받))",
+    re.I,
+)
 URL_PATTERN = re.compile(r"https?://[^\s<>\"]+")
-YEAR_PATTERN = re.compile(r"(20\d{2})\s*(?:학년도|(?=-\s*[12]\s*학기))")
+YEAR_PATTERN = re.compile(r"(20\d{2})\s*(?:학년도|년도|(?=-\s*[12]\s*학기))")
+ADMISSION_YEAR_PATTERN = re.compile(r"(20\d{2})\s*(?:(?:학년도|년도)\s*)?(?:입학|입학생|학번)")
 SEMESTER_PATTERN = re.compile(r"([12])\s*학기")
 DATE_PATTERN = re.compile(r"(20\d{2})[.\-/년 ]+(\d{1,2})[.\-/월 ]+(\d{1,2})")
 FLEX_DATE_PATTERN = re.compile(
@@ -27,8 +66,21 @@ KST = ZoneInfo("Asia/Seoul")
 
 
 def normalize_text(value: str) -> str:
-    value = html.unescape(TAG_PATTERN.sub(" ", value or ""))
+    value = html.unescape(TAG_PATTERN.sub(" ", (value or "").replace("\x00", " ")))
     return SPACE_PATTERN.sub(" ", value).strip()
+
+
+def strip_nul(value):
+    """PostgreSQL text/JSONB가 허용하지 않는 NUL만 재귀적으로 제거한다."""
+    if isinstance(value, str):
+        return value.replace("\x00", " ")
+    if isinstance(value, list):
+        return [strip_nul(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(strip_nul(item) for item in value)
+    if isinstance(value, dict):
+        return {strip_nul(key): strip_nul(item) for key, item in value.items()}
+    return value
 
 
 def content_hash(title: str, content: str, attachment_text: str, published_at: str, resource_manifest: str = "") -> str:
@@ -38,7 +90,9 @@ def content_hash(title: str, content: str, attachment_text: str, published_at: s
 
 def rule_extract(text: str) -> dict:
     text = normalize_text(text)
-    year = YEAR_PATTERN.search(text)
+    admission_year = ADMISSION_YEAR_PATTERN.search(text)
+    year = next((match for match in YEAR_PATTERN.finditer(text)
+                 if not re.search(r"(?:입학|입학생|학번)", text[match.end():match.end() + 12])), None)
     semester = SEMESTER_PATTERN.search(text)
     return {
         "phones": sorted(set(PHONE_PATTERN.findall(text))),
@@ -46,6 +100,7 @@ def rule_extract(text: str) -> dict:
         "urls": sorted(set(URL_PATTERN.findall(text))),
         "dates": [match.group(0) for match in DATE_PATTERN.finditer(text)],
         "academic_year": int(year.group(1)) if year else None,
+        "admission_year": int(admission_year.group(1)) if admission_year else None,
         "semester": int(semester.group(1)) if semester else None,
     }
 
@@ -146,6 +201,15 @@ def extract_application_period(text: str, published_at: datetime) -> tuple[datet
             score += 4
         if any(token in fragment[:180] for token in ("~", "부터", "까지")):
             score += 2
+        prefix_context = normalized[max(0, label.start() - 24):label.start()]
+        # 행사 운영일·교육일정보다 "지원서 접수 기간"이 학생이
+        # 실제로 지켜야 할 신청 마감이므로 명시적 서류 접수 표기를 우선한다.
+        if (
+            explicit_period
+            and any(token in prefix_context for token in ("지원서", "신청서", "서류"))
+            and any(token in label_text for token in ("접수", "제출", "지원", "신청"))
+        ):
+            score += 8
         candidates.append((score, label.start(), label_text, fragment, dates))
     if not candidates:
         return None, None
@@ -231,4 +295,37 @@ def sensitive_input_types(text: str) -> list[str]:
         found.append("학번 또는 개인 식별번호")
     if ACCOUNT_PATTERN.search(normalized):
         found.append("계좌번호")
+    if NAMED_PERSON_PATTERN.search(normalized):
+        found.append("이름")
+    if PERSONAL_GRADE_PATTERN.search(normalized):
+        found.append("개인 성적")
     return found
+
+
+def is_dangerous_action_request(text: str) -> bool:
+    """폭력·방화의 실행을 돕는 요청만 모델 호출 전에 보수적으로 차단한다."""
+    normalized = normalize_text(text)
+    if not DANGEROUS_ACTION_PATTERN.search(normalized):
+        return False
+    malicious_intent = DANGEROUS_INTENT_PATTERN.search(normalized)
+    if not malicious_intent:
+        return False
+    # 예방·대피·신고 질문은 허용하되, 실행 최적화나 은폐 표현이 함께
+    # 있으면 안전 문구를 끼워 넣은 우회 요청으로 보고 차단한다.
+    if BENIGN_SAFETY_CONTEXT_PATTERN.search(normalized) and not re.search(
+        r"(?:잘\s*(?:퍼지|번지)|효과적|최대한|피해를?\s*(?:크게|많이)|"
+        r"몰래|들키지|안\s*걸리|추적을?\s*피하|증거를?\s*(?:없애|숨기))",
+        normalized,
+        re.I,
+    ):
+        return False
+    return True
+
+
+def is_harm_reporting_request(text: str) -> bool:
+    """범죄 실행이 아니라 피해·위협의 신고와 도움을 구하는 질문을 구분한다."""
+    normalized = normalize_text(text)
+    return bool(
+        DANGEROUS_ACTION_PATTERN.search(normalized)
+        and HARM_REPORTING_CONTEXT_PATTERN.search(normalized)
+    )

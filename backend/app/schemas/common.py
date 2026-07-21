@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.services.search.task_rules import TASKS as QUERY_TASKS
+
 
 CATEGORIES = ["학사일정", "등록", "학사", "교직안내", "병무", "창업교육안내", "대학생활안내", "장학", "취업", "기타"]
 NOTICE_STATUSES = ["upcoming", "active", "expired", "always", "unknown"]
@@ -11,6 +13,7 @@ ACTION_TYPES = ["신청", "제출", "납부", "확인", "참석", "수강", "발
 STEP_ACTION_TYPES = ["open_url", "navigate", "submit", "upload", "pay", "verify", "contact", "other"]
 SOURCE_TYPES = ["html", "body_image", "attachment_image", "pdf", "attachment", "unknown"]
 STEP_TITLE_PREFERRED_MAX = 100
+QueryTask = Literal[*tuple(task.key for task in QUERY_TASKS)]
 
 
 def _compact_step_title(value: str, action_type: str) -> str:
@@ -93,6 +96,8 @@ class StructuredActionStep(CamelModel):
     title: str = Field(min_length=1, max_length=300)
     description: str = Field(min_length=1, max_length=2000)
     action_type: str = "other"
+    actor: Literal["student", "staff", "system"] = "student"
+    student_action_required: bool = True
     action_url: str | None = None
     link_label: str | None = Field(default=None, max_length=100)
     source_type: str = "html"
@@ -146,6 +151,62 @@ class StructuredActionGuide(CamelModel):
         return self
 
 
+class StructuredTaskFact(CamelModel):
+    fact_type: str = Field(min_length=1, max_length=100)
+    label: str = Field(min_length=1, max_length=200)
+    value: str = Field(min_length=1, max_length=3000)
+    normalized_value: str | None = Field(default=None, max_length=3000)
+    applies_to: list[str] = Field(default_factory=list)
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    source_locator: str | None = Field(default=None, max_length=500)
+    source_type: str = "html"
+    student_actionable: bool = False
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    @field_validator("source_type")
+    @classmethod
+    def fact_source_type_allowed(cls, value: str) -> str:
+        return value if value in SOURCE_TYPES else "unknown"
+
+
+class StructuredTaskEvidence(CamelModel):
+    field_name: str = Field(min_length=1, max_length=120)
+    excerpt: str = Field(min_length=1, max_length=3000)
+    source_type: str = "html"
+    source_locator: str | None = Field(default=None, max_length=500)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    @field_validator("source_type")
+    @classmethod
+    def evidence_source_type_allowed(cls, value: str) -> str:
+        return value if value in SOURCE_TYPES else "unknown"
+
+
+class StructuredTaskUnit(CamelModel):
+    task_key: str = Field(min_length=1, max_length=120)
+    task_name: str = Field(min_length=1, max_length=200)
+    parent_task: str | None = Field(default=None, max_length=120)
+    section_title: str | None = Field(default=None, max_length=300)
+    summary: str | None = Field(default=None, max_length=2000)
+    aliases: list[str] = Field(default_factory=list)
+    excluded_intents: list[str] = Field(default_factory=list)
+    admission_year_start: int | None = Field(default=None, ge=1900, le=2200)
+    admission_year_end: int | None = Field(default=None, ge=1900, le=2200)
+    academic_year: int | None = Field(default=None, ge=1900, le=2200)
+    semester: int | None = Field(default=None, ge=1, le=2)
+    target: Target = Field(default_factory=Target)
+    application_period: Period = Field(default_factory=Period)
+    event_period: Period = Field(default_factory=Period)
+    document_submission_period: Period = Field(default_factory=Period)
+    result_announcement_period: Period = Field(default_factory=Period)
+    facts: list[StructuredTaskFact] = Field(default_factory=list, max_length=100)
+    evidence: list[StructuredTaskEvidence] = Field(default_factory=list, max_length=100)
+    procedure: StructuredActionGuide | None = None
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    needs_review: bool = False
+
+
 class StructuredNotice(CamelModel):
     category: str = "기타"
     sub_category: str | None = None
@@ -178,6 +239,7 @@ class StructuredNotice(CamelModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     needs_review: bool = False
     action_guide: StructuredActionGuide | None = None
+    task_units: list[StructuredTaskUnit] = Field(default_factory=list, max_length=50)
 
     @field_validator("category")
     @classmethod
@@ -197,15 +259,135 @@ class StructuredNotice(CamelModel):
 
 class QueryFilters(CamelModel):
     intent: str | None = None
+    task_key: str | None = None
     category: str | None = None
     sub_category: str | None = None
     academic_year: int | None = None
+    admission_year: int | None = None
     semester: int | None = None
     grade: int | None = None
     department: str | None = None
     student_status: str | None = None
     time_scope: str | None = None
     keywords: list[str] = Field(default_factory=list)
+
+
+class QuerySubQuery(CamelModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: s.split("_")[0] + "".join(p.title() for p in s.split("_")[1:]),
+        extra="forbid",
+    )
+    task_key: QueryTask
+    task_name: str | None = Field(default=None, max_length=200)
+    query_text: str = Field(min_length=1, max_length=300)
+
+    @field_validator("task_name", "query_text")
+    @classmethod
+    def reject_instructions(cls, value: str | None) -> str | None:
+        if value and re.search(r"https?://|(?:curl|wget|sudo|rm\s+-|chmod|bash|powershell)\b|<\/?(?:system|assistant|tool)", value, re.I):
+            raise ValueError("subQuery에 URL, 명령 또는 프롬프트 지시문을 넣을 수 없습니다.")
+        return re.sub(r"\s+", " ", value).strip() if value else value
+
+
+class QueryPlan(QueryFilters):
+    """외부 모델이 만들 수 있는 범위를 닫아 둔 온디맨드 검색 계획."""
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: s.split("_")[0] + "".join(p.title() for p in s.split("_")[1:]),
+        extra="forbid",
+    )
+
+    intent: str | None = Field(default=None, max_length=120)
+    scope: Literal["in_scope", "search_first", "out_of_scope"] = "search_first"
+    scope_confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    scope_reason: str | None = Field(default=None, max_length=180)
+    task_key: QueryTask | None = None
+    category: str | None = Field(default=None, max_length=40)
+    sub_category: str | None = Field(default=None, max_length=100)
+    academic_year: int | None = Field(default=None, ge=1900, le=2200)
+    admission_year: int | None = Field(default=None, ge=1900, le=2200)
+    semester: Literal[1, 2] | None = None
+    grade: int | None = Field(default=None, ge=1, le=4)
+    department: str | None = Field(default=None, max_length=80)
+    student_status: str | None = Field(default=None, max_length=40)
+    time_scope: str | None = Field(default=None, max_length=40)
+    keywords: list[str] = Field(default_factory=list, max_length=15)
+    requested_tasks: list[QueryTask] = Field(default_factory=list, max_length=10)
+    requested_fields: list[str] = Field(default_factory=list, max_length=20)
+    sub_queries: list[QuerySubQuery] = Field(default_factory=list, max_length=10)
+    required_facts: list[str] = Field(default_factory=list, max_length=12)
+    search_terms: list[str] = Field(default_factory=list, max_length=4)
+    college: str | None = Field(default=None, max_length=80)
+    intent_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    needs_clarification: bool = False
+    clarification_question: str | None = Field(default=None, max_length=180)
+    clarification_options: list[str] = Field(default_factory=list, max_length=5)
+    follow_up: bool = False
+    context_applied: bool = False
+
+    @field_validator(
+        "intent", "task_key", "category", "sub_category", "department", "student_status",
+        "time_scope", "college", "clarification_question", "scope_reason",
+    )
+    @classmethod
+    def safe_plan_string(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = re.sub(r"\s+", " ", value).strip()
+        if len(value) > 200:
+            raise ValueError("QueryPlan 문자열이 너무 깁니다.")
+        if re.search(r"https?://|(?:curl|wget|sudo|rm\s+-|chmod|bash|powershell)\b|<\/?(?:system|assistant|tool)", value, re.I):
+            raise ValueError("QueryPlan에 URL, 명령 또는 프롬프트 지시문을 넣을 수 없습니다.")
+        return value
+
+    @field_validator(
+        "keywords", "requested_tasks", "requested_fields", "required_facts", "search_terms",
+        "clarification_options",
+    )
+    @classmethod
+    def safe_plan_list(cls, values: list[str]) -> list[str]:
+        cleaned = []
+        for raw in values:
+            value = re.sub(r"\s+", " ", str(raw)).strip()
+            if not value or len(value) > 160:
+                raise ValueError("QueryPlan 배열 값의 길이가 올바르지 않습니다.")
+            if re.search(r"https?://|(?:curl|wget|sudo|rm\s+-|chmod|bash|powershell)\b|<\/?(?:system|assistant|tool)", value, re.I):
+                raise ValueError("QueryPlan에 URL, 명령 또는 프롬프트 지시문을 넣을 수 없습니다.")
+            if value not in cleaned:
+                cleaned.append(value)
+        return cleaned
+
+    @model_validator(mode="after")
+    def validate_task_enum_and_clarification(self):
+        # taskKey는 기존 검색 코드와 호환되는 단일 canonical task 필드다.
+        # 값 목록은 app.services.search.task_rules.TASKS에서 관리하며 여기서는
+        # 순환 import를 피하기 위해 지연 검증한다.
+        from app.services.search.task_rules import TASK_BY_KEY
+
+        task_keys = [self.task_key, *self.requested_tasks]
+        if any(key and key not in TASK_BY_KEY for key in task_keys):
+            raise ValueError("허용되지 않은 taskKey입니다.")
+        if self.needs_clarification and not self.clarification_question:
+            raise ValueError("재질문이 필요하면 clarificationQuestion이 있어야 합니다.")
+        if not self.needs_clarification and self.clarification_options:
+            raise ValueError("재질문 선택지는 needsClarification=true일 때만 사용할 수 있습니다.")
+        return self
+
+
+class CandidateJudgement(CamelModel):
+    candidate_id: str = Field(min_length=1, max_length=200)
+    task_unit_id: int | None = None
+    notice_id: int
+    relevance: float = Field(ge=0.0, le=1.0)
+    matched_task: str | None = None
+    matched_fields: list[str] = Field(default_factory=list)
+    rejection_reason: str | None = None
+
+
+class CandidateRerankResult(CamelModel):
+    candidates: list[CandidateJudgement] = Field(default_factory=list, max_length=10)
 
 
 class CodexJobFailure(CamelModel):
@@ -240,6 +422,9 @@ class NextAction(CamelModel):
 class AnswerFact(CamelModel):
     label: str = Field(min_length=1, max_length=100)
     value: str = Field(min_length=1, max_length=1000)
+    source_notice_id: int | None = None
+    task_unit_id: int | None = None
+    source_locator: str | None = Field(default=None, max_length=500)
 
 
 class ActionGuideResponse(CamelModel):
@@ -250,6 +435,7 @@ class ActionGuideResponse(CamelModel):
     prerequisites: list[str] = Field(default_factory=list)
     required_documents: list[str] = Field(default_factory=list)
     eligibility_notes: list[str] = Field(default_factory=list)
+    application_method: str | None = None
     application_location: str | None = None
     fee_information: str | None = None
     capacity: str | None = None
@@ -259,6 +445,7 @@ class ActionGuideResponse(CamelModel):
     benefits: list[str] = Field(default_factory=list)
     credits_or_hours: str | None = None
     important_dates: list[ImportantDate] = Field(default_factory=list)
+    additional_facts: list[AdditionalFact] = Field(default_factory=list)
     steps: list[StructuredActionStep] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     application_url: str | None = None
@@ -275,15 +462,38 @@ class SourceEvidence(CamelModel):
     effective_status: str
     evidence_excerpt: str
     url: str
+    task_key: str | None = None
+    task_unit_id: int | None = None
+
+
+class AnswerMedia(CamelModel):
+    type: Literal["image"] = "image"
+    url: str
+    alt: str = Field(min_length=1, max_length=300)
+    caption: str | None = Field(default=None, max_length=500)
+    source_url: str
+    notice_id: int
+
+
+class TaskAnswerResponse(CamelModel):
+    task_key: str
+    task_name: str
+    answer: str
+    answer_facts: list[AnswerFact] = Field(default_factory=list)
+    action_guide: ActionGuideResponse | None = None
+    next_action: NextAction | None = None
+    department: DepartmentInfo = Field(default_factory=DepartmentInfo)
+    source_notice_ids: list[int] = Field(default_factory=list)
 
 
 class SearchScope(CamelModel):
     sources: list[str] = Field(default_factory=lambda: [
         "academic_guides", "academic_calendar", "official_faq", "official_notices",
-        "staff_directory", "event_guides",
+        "scholarship_guides", "university_catalogs", "university_regulations",
+        "student_service_guides", "staff_directory", "event_guides",
     ])
     notice_count: int = 0
-    description: str = "현재 수집된 강남대학교 공식 학사안내·FAQ·공지·담당자·행사안내"
+    description: str = "현재 공개된 강남대학교 공식 학사안내·FAQ·공지·장학·대학요람·규정·학생지원·담당자·행사안내"
 
 
 class ChatResponse(CamelModel):
@@ -292,21 +502,24 @@ class ChatResponse(CamelModel):
     status: Literal[
         "success", "no_result", "constraint_mismatch", "insufficient_evidence",
         "conflicting_evidence", "stale_only", "out_of_scope",
-        "clarification_required", "service_error",
+        "clarification_required", "safety_refusal", "service_error",
     ] = "success"
     answer_mode: Literal["faq", "action_guide", "deterministic", "generated", "search_results_only", "department_handoff"] = "generated"
     answer_facts: list[AnswerFact] = Field(default_factory=list)
     answer_notes: list[str] = Field(default_factory=list)
+    clarification_options: list[str] = Field(default_factory=list, max_length=5)
     matched_notices: list[NoticeSummary] = Field(default_factory=list)
     sources: list[SourceEvidence] = Field(default_factory=list)
+    media: list[AnswerMedia] = Field(default_factory=list)
     department: DepartmentInfo = Field(default_factory=DepartmentInfo)
     next_action: NextAction | None = None
     action_guide: ActionGuideResponse | None = None
+    task_results: list[TaskAnswerResponse] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     original_url: str | None = None
     has_data: bool
     session_id: str
-    query: QueryFilters | None = None
+    query: QueryPlan | None = None
     verified_at: datetime
     search_scope: SearchScope = Field(default_factory=SearchScope)
 

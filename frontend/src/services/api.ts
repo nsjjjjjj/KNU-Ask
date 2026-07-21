@@ -20,4 +20,34 @@ export const api = {
   endSession: (sessionId: string) => request(`/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' }),
   feedback: (payload: { answerId: string; resolved: boolean; reason: FeedbackReason; sourceIds: number[]; responseStatus: string }) =>
     request<{ status: 'accepted' }>('/feedback', { method: 'POST', body: JSON.stringify(payload) }),
+  crawlerPreview: (mode: 'incremental' | 'daily' | 'pilot' | 'full', token: string) =>
+    request<CrawlerPreview>(`/crawler/preview?mode=${mode}`, { headers: { 'X-Admin-Token': token } }),
+  crawlerStatus: (token: string) =>
+    request<CrawlerStatus>('/crawler/status', { headers: { 'X-Admin-Token': token } }),
+}
+
+export interface CrawlerPreview {
+  mode: string
+  maximumDocuments: number
+  maximumAIJobs: number
+  sources: string[]
+  currentActiveDocuments: number
+  estimatedNewOrChangedUpperBound: number
+  estimatedAIJobsUpperBound: number
+  estimatedInputTokensUpperBound: number
+  unchangedDocumentsSkipAI: boolean
+  publicIndexKeptUntilSuccess: boolean
+}
+
+export interface CrawlerStatus {
+  id?: number | null
+  status: string
+  phase?: string | null
+  totalFound?: number
+  newCount?: number
+  updatedCount?: number
+  skippedCount?: number
+  failedCount?: number
+  processedCount?: number
+  errorMessage?: string | null
 }

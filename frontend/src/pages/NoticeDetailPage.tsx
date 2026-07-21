@@ -4,14 +4,7 @@ import { api } from '../services/api'
 import type { NoticeDetail } from '../types'
 import { ActionGuideCard } from '../components/ActionGuideCard'
 import { isPlaceholderUrl } from '../utils/noticeLinks'
-
-const statusLabels: Record<string, string> = {
-  upcoming: '예정',
-  active: '진행 중',
-  expired: '종료',
-  always: '상시',
-  unknown: '확인 필요',
-}
+import { noticeStatusPresentation } from '../utils/noticeStatus'
 
 export function NoticeDetailPage({ noticeId }: { noticeId: number }) {
   const [notice, setNotice] = useState<NoticeDetail>()
@@ -23,6 +16,7 @@ export function NoticeDetailPage({ noticeId }: { noticeId: number }) {
     applicationUrl: isPlaceholderUrl(notice.actionGuide.applicationUrl) ? null : notice.actionGuide.applicationUrl,
     steps: notice.actionGuide.steps.map(step => isPlaceholderUrl(step.actionUrl) ? {...step, actionUrl: null, linkLabel: null} : step),
   } : null
+  const status = notice ? noticeStatusPresentation(notice) : null
 
   useEffect(() => {
     api.noticeDetail(noticeId).then(setNotice).catch(reason => {
@@ -47,7 +41,7 @@ export function NoticeDetailPage({ noticeId }: { noticeId: number }) {
         <header className="border-b border-slate-200 p-6 md:p-8">
           <div className="mb-4 flex flex-wrap gap-2">
             <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">{notice.metadata?.category || '기타'}</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{notice.statusLabel || statusLabels[notice.noticeStatus] || notice.noticeStatus}</span>
+            {status && <span className={`rounded-full px-3 py-1 text-xs font-bold ${status.className}`}>{status.label}</span>}
           </div>
           <h1 className="text-2xl font-black leading-tight md:text-3xl">{notice.title}</h1>
           <p className="mt-4 flex items-center gap-2 text-sm text-slate-500"><CalendarDays size={17}/>게시 {new Date(notice.publishedAt).toLocaleDateString('ko-KR')}</p>
@@ -65,6 +59,7 @@ export function NoticeDetailPage({ noticeId }: { noticeId: number }) {
             <div><dt className="font-bold text-slate-500">담당자</dt><dd className="mt-1 font-semibold">{notice.metadata.department.contactPerson || '확인 필요'}</dd></div>
             <div><dt className="font-bold text-slate-500">전화번호</dt><dd className="mt-1 font-semibold">{notice.metadata.department.phone || '확인 필요'}</dd></div>
             <div><dt className="font-bold text-slate-500">운영시간</dt><dd className="mt-1 font-semibold">{notice.metadata.department.officeHours || '확인 필요'}</dd></div>
+            {notice.metadata.applicationMethod && <div className="sm:col-span-2"><dt className="font-bold text-slate-500">신청 방법</dt><dd className="mt-1 font-semibold">{notice.metadata.applicationMethod}</dd></div>}
             {notice.metadata.applicationLocation && <div className="sm:col-span-2"><dt className="font-bold text-slate-500">신청 장소·경로</dt><dd className="mt-1 font-semibold">{notice.metadata.applicationLocation}</dd></div>}
             {(notice.metadata.eligibilityNotes?.length ?? 0) > 0 && <div className="sm:col-span-2"><dt className="font-bold text-slate-500">자격·제외 조건</dt><dd className="mt-1 font-semibold">{notice.metadata.eligibilityNotes?.join(', ')}</dd></div>}
             <div className="sm:col-span-2"><dt className="font-bold text-slate-500">필요 서류</dt><dd className="mt-1 font-semibold">{notice.metadata.requiredDocuments.length ? notice.metadata.requiredDocuments.join(', ') : '없음'}</dd></div>
@@ -73,6 +68,7 @@ export function NoticeDetailPage({ noticeId }: { noticeId: number }) {
             {notice.metadata.selectionMethod && <div><dt className="font-bold text-slate-500">선발 방식</dt><dd className="mt-1 font-semibold">{notice.metadata.selectionMethod}</dd></div>}
             {notice.metadata.resultAnnouncement && <div><dt className="font-bold text-slate-500">결과 발표</dt><dd className="mt-1 font-semibold">{notice.metadata.resultAnnouncement}</dd></div>}
             {notice.metadata.cancellationPolicy && <div className="sm:col-span-2"><dt className="font-bold text-slate-500">취소·변경 조건</dt><dd className="mt-1 font-semibold">{notice.metadata.cancellationPolicy}</dd></div>}
+            {(notice.metadata.additionalFacts?.length ?? 0) > 0 && <div className="sm:col-span-2"><dt className="font-bold text-slate-500">기타 중요 정보</dt><dd className="mt-1"><ul className="list-disc space-y-1 pl-5 font-semibold">{notice.metadata.additionalFacts?.map(item => <li key={`${item.factType}-${item.label}`}>{item.label}: {item.value}</li>)}</ul></dd></div>}
           </dl>}
         </section>
       </article>}

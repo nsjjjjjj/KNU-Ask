@@ -1,6 +1,13 @@
 from app.models.entities import (
     ActionGuide,
     ActionStep,
+    ChatSessionContext,
+    VerifiedAnswerCache,
+    AnswerCacheAlias,
+    QueryMetric,
+    EvidenceReviewQueue,
+    EvidenceRecoveryRecord,
+    OnDemandCodexJob,
     CrawlHistory,
     DataGap,
     Department,
@@ -10,12 +17,20 @@ from app.models.entities import (
     NoticeChunk,
     NoticeEmbedding,
     NoticeMetadata,
+    KnowledgeTask,
+    TaskEvidence,
+    TaskFact,
+    TaskProcedure,
+    TaskProcedureStep,
+    TaskUnit,
+    TaskUnitEmbedding,
     ProcessingJob,
     StaffDirectoryContact,
 )
 
 __all__ = [
-    "ActionGuide", "ActionStep", "CrawlHistory", "DataGap", "Department", "FAQ", "Feedback",
+    "ActionGuide", "ActionStep", "ChatSessionContext", "VerifiedAnswerCache", "AnswerCacheAlias", "QueryMetric", "EvidenceReviewQueue", "EvidenceRecoveryRecord", "OnDemandCodexJob", "CrawlHistory", "DataGap", "Department", "FAQ", "Feedback",
     "Notice", "NoticeChunk", "NoticeEmbedding", "NoticeMetadata", "ProcessingJob",
-    "StaffDirectoryContact",
+    "StaffDirectoryContact", "KnowledgeTask", "TaskUnit", "TaskFact", "TaskEvidence",
+    "TaskProcedure", "TaskProcedureStep", "TaskUnitEmbedding",
 ]

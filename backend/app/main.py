@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router
 from app.core.config import settings
 from app.db.init_db import main as init_db
-from app.services.crawler.jobs import run_scheduled_crawl, run_scheduled_full_crawl
+from app.services.crawler.jobs import (
+    run_scheduled_crawl, run_scheduled_daily_crawl, run_scheduled_full_crawl,
+)
 
 
 scheduler = BackgroundScheduler(timezone="Asia/Seoul")
@@ -24,7 +26,12 @@ async def lifespan(_: FastAPI):
             id="incremental-crawler", replace_existing=True, max_instances=1, coalesce=True,
         )
         scheduler.add_job(
-            run_scheduled_full_crawl, "cron", hour=settings.crawler_full_schedule_hour, minute=30,
+            run_scheduled_daily_crawl, "cron", hour=settings.crawler_daily_schedule_hour, minute=15,
+            id="daily-static-crawler", replace_existing=True, max_instances=1, coalesce=True,
+        )
+        scheduler.add_job(
+            run_scheduled_full_crawl, "cron", day_of_week=settings.crawler_full_schedule_day,
+            hour=settings.crawler_full_schedule_hour, minute=30,
             id="full-crawler", replace_existing=True, max_instances=1, coalesce=True,
         )
         scheduler.start()

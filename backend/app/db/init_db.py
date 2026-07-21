@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import app.models  # noqa: F401
 from app.db.session import Base, engine
+from app.services.search.task_rules import TASKS
 
 
 def main() -> None:
@@ -10,6 +11,17 @@ def main() -> None:
         with engine.begin() as connection:
             connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     Base.metadata.create_all(engine)
+    # 공지별 세부 제목이 공유 KnowledgeTask 이름을 덮던 이전 데이터도
+    # 서버 시작 시 canonical 업무명으로 안전하게 복구한다.
+    with engine.begin() as connection:
+        for task in TASKS:
+            connection.execute(text(
+                "UPDATE knowledge_tasks SET name = :name, parent_key = :parent_key, category = :category "
+                "WHERE task_key = :task_key"
+            ), {
+                "name": task.name, "parent_key": task.parent,
+                "category": task.category, "task_key": task.key,
+            })
     if engine.dialect.name == "postgresql":
         with engine.begin() as connection:
             statements = [
@@ -40,8 +52,24 @@ def main() -> None:
                 "ALTER TABLE crawl_history ADD COLUMN IF NOT EXISTS phase VARCHAR(40) DEFAULT 'queued'",
                 "ALTER TABLE crawl_history ADD COLUMN IF NOT EXISTS phase_current INTEGER DEFAULT 0",
                 "ALTER TABLE crawl_history ADD COLUMN IF NOT EXISTS phase_total INTEGER",
+                "ALTER TABLE task_units ADD COLUMN IF NOT EXISTS document_submission_start TIMESTAMPTZ",
+                "ALTER TABLE task_units ADD COLUMN IF NOT EXISTS document_submission_end TIMESTAMPTZ",
+                "ALTER TABLE task_units ADD COLUMN IF NOT EXISTS result_announcement_start TIMESTAMPTZ",
+                "ALTER TABLE task_units ADD COLUMN IF NOT EXISTS result_announcement_end TIMESTAMPTZ",
+                "ALTER TABLE task_facts ADD COLUMN IF NOT EXISTS source_type VARCHAR(40) DEFAULT 'html'",
+                "ALTER TABLE task_facts ADD COLUMN IF NOT EXISTS student_actionable BOOLEAN DEFAULT FALSE",
                 "CREATE INDEX IF NOT EXISTS ix_notices_source_type ON notices (source_type)",
                 "CREATE INDEX IF NOT EXISTS ix_notices_source_priority ON notices (source_priority)",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS recovery_triggered BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS recovery_reason VARCHAR(120)",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS requested_missing_fields JSON DEFAULT '[]'::json",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS recovery_result VARCHAR(30)",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS checked_attachment_count INTEGER DEFAULT 0",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS checked_page_count INTEGER DEFAULT 0",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS recovery_duration_ms DOUBLE PRECISION",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS recovery_cache_hit BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS persisted_fact_count INTEGER DEFAULT 0",
+                "ALTER TABLE query_metrics ADD COLUMN IF NOT EXISTS persisted_step_count INTEGER DEFAULT 0",
             ]
             for statement in statements:
                 connection.execute(text(statement))

@@ -2,10 +2,13 @@ from datetime import datetime
 
 from sqlalchemy import func, select
 
-from app.models import ActionStep, ProcessingJob
-from app.schemas import AdditionalFact, ImportantDate, StructuredActionGuide, StructuredNotice
+from app.models import ActionStep, ProcessingJob, TaskUnit
+from app.schemas import (
+    AdditionalFact, ImportantDate, StructuredActionGuide, StructuredNotice,
+)
 from app.services.ai import AIService
 from app.services.processing import NoticeProcessor
+from app.services.search import HybridSearch
 from app.utils.text import extract_application_period, extract_notice_contact, extract_notice_email, rule_extract
 
 
@@ -52,6 +55,31 @@ def test_changed_notice_reprocesses(db):
     assert changed.ai_processed is True
 
 
+def test_attachment_refresh_repairs_legacy_notice_without_full_crawl(db, monkeypatch):
+    item = raw(source_id="legacy-attachment", content="첨부파일을 확인하세요.")
+    item["attachment_names"] = ["안내.pdf"]
+    item["attachment_urls"] = ["https://web.kangnam.ac.kr/files/guide.pdf"]
+    notice, _ = NoticeProcessor(db).upsert(item)
+    notice.attachment_text = ""
+    notice.attachment_manifest = []
+    notice.extraction_status = "not_required"
+    monkeypatch.setattr(
+        "app.services.processing.AttachmentExtractor.extract_many",
+        lambda _self, _names, _urls: ("신청 기간과 절차", "success"),
+    )
+    monkeypatch.setattr(
+        "app.services.processing.AttachmentExtractor.manifest",
+        lambda _self, names, urls: [{"name": names[0], "url": urls[0], "extractionStatus": "success"}],
+    )
+
+    status = NoticeProcessor.refresh_attachments(notice)
+
+    assert status == "success"
+    assert notice.attachment_text == "신청 기간과 절차"
+    assert notice.attachment_manifest[0]["extractionStatus"] == "success"
+    assert notice.ai_processed is False
+
+
 def test_external_ai_provider_queues_without_persisting_rule_result(db, monkeypatch):
     from app.core.config import settings
 
@@ -74,6 +102,209 @@ def test_long_notice_is_saved_as_multiple_search_chunks(db):
 
     assert len(notice.chunks) >= 2
     assert all(chunk.embedding_version == notice.embedding_version for chunk in notice.chunks)
+
+
+def test_academic_sections_are_persisted_as_separate_task_units(db):
+    item = raw(source_id="academic-graduation", content="졸업 및 유예 안내")
+    item.update({
+        "title": "[상시 학사안내] 졸업",
+        "source_type": "academic_guide",
+        "source_priority": 110,
+        "source_metadata": {"sections": [
+            {"title": "졸업요건", "content": "2008학년도 이전 입학자도 8학기 등록 및 130학점 이상 취득", "sourceLocator": "HTML section:졸업요건"},
+            {"title": "학사학위취득유예", "content": "졸업요건 충족 후 소정기한 내 신청", "sourceLocator": "HTML section:학사학위취득유예"},
+        ]},
+    })
+
+    notice, _ = NoticeProcessor(db).upsert(item)
+    db.commit()
+    keys = {unit.task.task_key for unit in notice.task_units}
+
+    assert keys == {"graduation.requirements", "graduation.defer"}
+    assert db.scalar(select(func.count(TaskUnit.id)).where(TaskUnit.notice_id == notice.id)) == 2
+    assert all(unit.academic_year is None and unit.semester is None for unit in notice.task_units)
+
+
+def test_external_arbitrary_task_key_is_normalized_to_search_canonical_key(db):
+    processor = NoticeProcessor(db)
+    item = raw(source_id="tuition-image", content="등록금 납부 안내")
+    notice, _ = processor.upsert(item)
+    structured = StructuredNotice.model_validate({
+        "category": "등록",
+        "applicationPeriod": {},
+        "eventPeriod": {},
+        "target": {},
+        "taskUnits": [{
+            "taskKey": "regular_tuition_payment",
+            "taskName": "정규등록금 납부",
+            "parentTask": "tuition",
+            "aliases": ["등록금 납부", "정규등록"],
+            "target": {},
+            "applicationPeriod": {},
+            "eventPeriod": {},
+            "documentSubmissionPeriod": {},
+            "resultAnnouncementPeriod": {},
+            "facts": [],
+            "evidence": [],
+            "confidence": 0.9,
+        }],
+    })
+
+    processor.persist_structured(notice, structured)
+    db.commit()
+
+    saved_units = list(db.scalars(select(TaskUnit).where(TaskUnit.notice_id == notice.id)))
+    assert [unit.task.task_key for unit in saved_units] == ["tuition.payment"]
+    assert saved_units[0].task.name == "일반 등록금 납부"
+    assert saved_units[0].title == "정규등록금 납부"
+
+
+def test_external_structure_rejects_publication_date_as_application_period(db):
+    processor = NoticeProcessor(db)
+    item = raw(source_id="leave-publication-date", content="일반휴학은 휴학신청기간 또는 개강일로부터 4주 이내 신청")
+    item["title"] = "[상시 학사안내] 휴학"
+    notice, _ = processor.upsert(item)
+    structured = StructuredNotice.model_validate({
+        "category": "학사", "applicationPeriod": {}, "eventPeriod": {}, "target": {},
+        "taskUnits": [{
+            "taskKey": "leave.general", "taskName": "일반휴학 신청", "parentTask": "leave",
+            "aliases": ["일반휴학"], "target": {},
+            "applicationPeriod": {
+                "start": "2026-07-20T00:00:00+09:00",
+                "end": "2026-07-20T23:59:00+09:00",
+            },
+            "eventPeriod": {}, "documentSubmissionPeriod": {}, "resultAnnouncementPeriod": {},
+            "facts": [], "evidence": [{
+                "fieldName": "applicationPeriod",
+                "excerpt": "휴학신청기간 또는 개강일로부터 4주 이내",
+                "sourceType": "html", "sourceLocator": "HTML section:휴학",
+                "confidence": 0.99,
+            }],
+            "confidence": 0.9,
+        }],
+    })
+
+    grounded = NoticeProcessor.ground_external_structured(notice, structured)
+
+    assert grounded.task_units[0].application_period.start is None
+    assert grounded.task_units[0].application_period.end is None
+    assert grounded.task_units[0].needs_review is True
+
+
+def test_unclassified_academic_page_does_not_infer_task_from_exception_body(db):
+    item = raw(source_id="academic-season", content="계절수업 유의사항")
+    item.update({
+        "title": "[상시 학사안내] 계절수업",
+        "source_type": "academic_guide",
+        "source_metadata": {"sections": [{
+            "title": "유의사항", "content": "조기졸업대상자는 신청 학점을 확인해야 합니다.",
+        }]},
+    })
+
+    notice, _ = NoticeProcessor(db).upsert(item)
+    db.commit()
+
+    assert notice.task_units == []
+
+
+def test_step_labeled_academic_section_becomes_reusable_procedure():
+    guide = NoticeProcessor._procedure_from_step_text(
+        "leave.general", "휴학원 처리 절차",
+        "1. 일반휴학 step 1 종합정보시스템 접속 step 2 일반휴학신청 클릭 "
+        "step 3 휴학신청서 작성 step 4 학과장 승인 step 5 교학팀 결재 "
+        "2. 입대휴학 step 1 입대휴학신청 클릭",
+    )
+
+    assert guide is not None
+    assert [step.title for step in guide.steps] == [
+        "종합정보시스템 접속", "2단계 진행", "휴학신청서 작성",
+    ]
+    assert all("학과장" not in step.description and "교학팀" not in step.description for step in guide.steps)
+    assert all("입대휴학" not in step.description for step in guide.steps)
+
+
+def test_pdf_arrow_application_procedure_is_structured_without_model_call():
+    content = (
+        "[PDF page 4] □지원 방법 경기대학교 Barun을 통해 접수 "
+        "[PDF page 5] 참여링크: https://barun.kyonggi.ac.kr/링크 접속 → "
+        "외부회원 가입 → 메뉴바에서 “비교과활동” → “웹 개발 집중캠프” 검색 → "
+        "첨부파일의 지원서 작성 후 “신청하기”에 정보 입력 및 지원서 업로드 "
+        "o지원서 접수 기간: ~7월 12일까지 o최종 선발: 7월 20일"
+    )
+
+    method = AIService._mock_application_method("크래프톤 지원", content, "신청")
+    guide = AIService._mock_action_guide(
+        "크래프톤 지원", content, "신청", method,
+        ["https://barun.kyonggi.ac.kr/"],
+    )
+
+    assert method == (
+        "링크 접속 → 외부회원 가입 → 메뉴바에서 “비교과활동” → "
+        "“웹 개발 집중캠프” 검색 → 첨부파일의 지원서 작성 후 “신청하기”에 정보 입력 및 지원서 업로드"
+    )
+    assert guide is not None
+    assert len(guide.steps) == 5
+    assert all(step.action_url == "https://barun.kyonggi.ac.kr/" for step in guide.steps)
+    assert all(step.link_label == "경기대 Barun 열기" for step in guide.steps)
+    assert all(step.source_type == "pdf" for step in guide.steps)
+    assert all(step.source_locator == "PDF page 5" for step in guide.steps)
+
+
+def test_followup_steps_do_not_guess_a_link_when_multiple_sites_are_present():
+    guide = AIService._mock_action_guide(
+        "외부 프로그램 신청",
+        "신청 방법: 링크 접속 → 회원가입 → 지원서 제출",
+        "신청",
+        "링크 접속 → 회원가입 → 지원서 제출",
+        ["https://first.example/apply", "https://second.example/form"],
+    )
+
+    assert guide is not None
+    assert all(step.action_url is None for step in guide.steps)
+
+
+def test_program_summary_uses_definition_in_attachment_instead_of_registrar_prefix():
+    summary = AIService._mock_notice_summary(
+        "경기대학교-크래프톤 정글 웹개발 집중 캠프",
+        "등록자 총무구매팀 박연희 (031-280-3169) "
+        "[PDF page 7] 본 과정은 경기대학교와 크래프톤에서 함께 주최하는 단기 프로그래밍 캠프 "
+        "“12일간의 몰입”으로서, 학생들이 단기간의 합숙과 몰입을 통해 "
+        "AI·SW개발을 경험해보는 캠프입니다.",
+    )
+
+    assert summary.startswith("경기대학교와 크래프톤에서 함께 주최하는 단기 프로그래밍 캠프입니다.")
+    assert "합숙과 몰입" in summary
+    assert "등록자" not in summary
+
+
+def test_application_period_prefers_document_submission_deadline_over_event_dates():
+    start, end = extract_application_period(
+        "코스 운영 일정: 7월 21일 ~ 8월 3일 "
+        "지원서 접수 기간: ~7월 12일(일)까지 최종 선발: 7월 20일",
+        datetime.fromisoformat("2026-06-11T09:00:00+09:00"),
+    )
+
+    assert start is None
+    assert end == datetime.fromisoformat("2026-07-12T23:59:00+09:00")
+
+
+def test_search_keeps_highest_scoring_section_from_same_notice(db):
+    item = raw(source_id="academic-graduation-search", content="졸업 안내")
+    item.update({
+        "title": "[상시 학사안내] 졸업", "source_type": "academic_guide", "source_priority": 110,
+        "source_metadata": {"sections": [
+            {"title": "이수구분 표기", "content": "교양필수 교필 전공필수 전필"},
+            {"title": "졸업 이수과목 및 학점", "content": "2021~2024학년도 입학자 최소졸업학점 130학점"},
+        ]},
+    })
+    NoticeProcessor(db).upsert(item)
+    db.commit()
+    ai = AIService()
+    question = "2024년도 입학생 졸업요건"
+
+    results = HybridSearch(db, ai).search(question, ai.analyze_query(question), 5)
+
+    assert results[0]["task_unit"].section_title == "졸업 이수과목 및 학점"
 
 
 def test_verified_content_links_survive_later_reprocessing(db):
@@ -168,6 +399,31 @@ def test_invalid_action_guide_does_not_discard_notice_metadata():
     assert result.search_text == "휴학 신청 안내"
     assert result.action_guide is None
     assert result.needs_review is True
+
+
+def test_external_structure_grounds_clear_category_and_explicit_no_documents(db):
+    item = raw(source_id="leave-grounding", content="일반휴학 신청방법 및 구비서류없음")
+    item["title"] = "[상시 학사안내] 일반휴학 신청 방법"
+    notice, _ = NoticeProcessor(db).upsert(item)
+    structured = StructuredNotice.model_validate({
+        "category": "기타", "applicationPeriod": {}, "eventPeriod": {}, "target": {},
+        "requiredDocuments": [],
+    })
+
+    grounded = NoticeProcessor.ground_external_structured(notice, structured)
+
+    assert grounded.category == "학사"
+    assert grounded.required_documents == ["별도 구비서류 없음"]
+
+
+def test_external_structure_grounds_national_scholarship_category(db):
+    item = raw(source_id="scholarship-grounding", content="국가장학금 1차 신청")
+    item["title"] = "2026-2학기 국가장학금 1차 신청 안내"
+    notice, _ = NoticeProcessor(db).upsert(item)
+
+    grounded = NoticeProcessor.ground_external_structured(notice, StructuredNotice())
+
+    assert grounded.category == "장학"
 
 
 def test_application_period_prefers_recruitment_dates_over_activity_dates():
@@ -382,5 +638,5 @@ def test_mock_leave_guide_uses_official_general_leave_steps():
 
     assert method == (
         "종합정보시스템 접속 → 학적변동관리 → 일반휴학신청 → "
-        "신규휴학신청 선택 → 휴학신청서 작성 및 제출 → 결재 상태 확인"
+        "신규휴학신청 선택 → 휴학신청서 작성 및 제출"
     )

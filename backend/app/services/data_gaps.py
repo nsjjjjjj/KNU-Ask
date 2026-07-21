@@ -26,8 +26,8 @@ FIELD_TERMS = {
     "selection_method": ("선발", "뽑", "선정 기준"),
     "result_announcement": ("결과", "합격 발표", "선발 발표"),
     "cancellation_policy": ("취소", "철회", "변경"),
-    "benefits": ("혜택", "장학금", "활동비", "수료증"),
-    "credits_or_hours": ("학점", "봉사시간", "비교과", "활동시간"),
+    "benefits": ("혜택", "지원금", "활동비", "수료증", "무엇을 받"),
+    "credits_or_hours": ("몇 학점", "인정 학점", "학점 인정", "봉사시간", "비교과 시간", "활동시간"),
 }
 
 
@@ -104,6 +104,7 @@ def record_gap(
 def collect_answer_gaps(
     db: Session, message: str, query: QueryFilters, notice: Notice | None,
     *, no_result: bool = False, insufficient_procedure: bool = False,
+    resolved_fields: set[str] | None = None,
 ) -> None:
     if no_result:
         record_gap(
@@ -113,7 +114,7 @@ def collect_answer_gaps(
         return
     if not notice:
         return
-    for field in sorted(missing_fields(message, notice)):
+    for field in sorted(missing_fields(message, notice) - (resolved_fields or set())):
         record_gap(
             db, gap_type="missing_requested_field", field_name=field, notice=notice, query=query,
             context={"sourceType": notice.source_type, "extractionStatus": notice.extraction_status},

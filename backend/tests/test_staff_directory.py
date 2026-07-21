@@ -29,3 +29,24 @@ def test_staff_directory_sync_and_duty_resolution(db):
     leave = resolve_staff_contact(db, "교무팀", "휴학 신청 담당자 연락처")
     assert leave is not None
     assert leave.contact_person == "조호성"
+
+
+def test_electronic_attendance_resolves_to_class_operations_contact(db):
+    records = [
+        {
+            "source_id": "directory:leader", "source_type": "staff_directory", "department_name": "교무팀",
+            "source_url": "https://web.kangnam.ac.kr/directory",
+            "source_metadata": {"contactPerson": "팀장", "duty": "팀장", "phone": "031-280-3541"},
+        },
+        {
+            "source_id": "directory:classes", "source_type": "staff_directory", "department_name": "교무팀",
+            "source_url": "https://web.kangnam.ac.kr/directory",
+            "source_metadata": {"contactPerson": "수업담당", "duty": "수업,강의평가", "phone": "031-280-3544"},
+        },
+    ]
+    sync_staff_directory(db, records)
+
+    result = resolve_staff_contact(db, "교무팀", "모바일 전자출결 사용 방법")
+
+    assert result.contact_person == "수업담당"
+    assert result.phone == "031-280-3544"

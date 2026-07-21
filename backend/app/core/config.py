@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gemini_chat_model: str = "gemini-3.1-flash-lite"
     gemini_api_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
-    gemini_chat_timeout: float = 60.0
+    gemini_chat_timeout: float = 10.0
     gemini_chat_max_output_tokens: int = 1536
     gemini_thinking_level: str = "low"
     gemini_max_retries: int = 2
@@ -34,11 +34,30 @@ class Settings(BaseSettings):
     ollama_chat_num_predict: int = 768
     ollama_structuring_num_predict: int = 2048
     local_ai_complex_queries_only: bool = True
+    llm_candidate_reranking_enabled: bool = False
     notice_structuring_provider: str = "rules"
     codex_enrichment_enabled: bool = False
+    on_demand_search_enabled: bool = True
+    on_demand_live_search_enabled: bool = True
+    on_demand_codex_enabled: bool = True
+    on_demand_codex_provider: str = "codex_exec"
+    on_demand_codex_model: str = "gpt-5.6-sol"
+    on_demand_timeout_seconds: float = 30.0
+    on_demand_page_timeout_seconds: float = 5.0
+    on_demand_max_searches: int = 2
+    on_demand_max_urls: int = 6
+    on_demand_top_score_threshold: float = 0.58
+    missing_evidence_recovery_enabled: bool = True
+    missing_evidence_recovery_timeout_seconds: float = 12.0
+    missing_evidence_negative_ttl_seconds: int = 3600
+    missing_evidence_max_pdf_pages: int = 20
+    on_demand_allowed_domains: list[str] = Field(default_factory=lambda: [
+        "kangnam.ac.kr", "web.kangnam.ac.kr",
+    ])
+    on_demand_prompt_version: str = "ondemand-v22"
     openai_embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
-    embedding_provider: str = "auto"
+    embedding_provider: str = "ollama"
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_embedding_model: str = "bge-m3"
     ollama_embedding_keep_alive: str = "30m"
@@ -57,12 +76,16 @@ class Settings(BaseSettings):
     crawler_event_detail_limit: int = 300
     crawler_extract_attachments: bool = True
     crawler_attachment_max_mb: int = 25
+    crawler_attachment_cache_ttl_hours: int = 24
     crawler_attachment_cache_dir: str = "/app/data/attachment-cache"
     crawler_schedule_enabled: bool = True
     crawler_schedule_minutes: int = 60
+    crawler_daily_schedule_hour: int = 2
     crawler_full_schedule_hour: int = 3
+    crawler_full_schedule_day: str = "sun"
     max_input_length: int = 1000
-    admin_api_token: str = "local-dev-admin"
+    # 관리자 API는 명시적으로 비밀값을 설정하기 전까지 비활성화한다.
+    admin_api_token: str | None = None
     schema_version: str = "2.0"
     embedding_version: str = "2.0"
 
@@ -71,6 +94,13 @@ class Settings(BaseSettings):
     def split_origins(cls, value):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("on_demand_allowed_domains", mode="before")
+    @classmethod
+    def split_allowed_domains(cls, value):
+        if isinstance(value, str):
+            return [item.strip().lower() for item in value.split(",") if item.strip()]
         return value
 
 

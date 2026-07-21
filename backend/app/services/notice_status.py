@@ -26,6 +26,10 @@ def effective_status(notice: Notice, now: datetime | None = None) -> str:
     meta = notice.metadata_record
     if not meta:
         return notice.notice_status
+    # 상시 안내의 학기 운영일·버스 시간표·행사 예시는 문서 자체의
+    # 신청 마감일이 아니다. 기간성 공지와 달리 안내 상태를 유지한다.
+    if notice.notice_status == "always":
+        return "always"
     if meta.application_start or meta.application_end:
         return _period_status(meta.application_start, meta.application_end, now)
     if meta.action_type in ACTIONABLE_TYPES or notice.action_guide:

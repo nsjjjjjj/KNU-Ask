@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: knuask
       POSTGRES_USER: knuask
-      POSTGRES_PASSWORD: knuask
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
