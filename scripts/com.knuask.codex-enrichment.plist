@@ -7,18 +7,18 @@
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
-        <string>/Users/noseongjun/Library/Application Support/KNU-Ask/codex_ingestion_worker.py</string>
+        <string>__KNUASK_WORKER_PATH__</string>
         <string>--watch</string>
         <string>--interval</string>
         <string>1</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/noseongjun/Library/Application Support/KNU-Ask</string>
+    <string>__KNUASK_WORKING_DIRECTORY__</string>
     <key>EnvironmentVariables</key>
     <dict>
         <!-- macOS 개인정보 보호 경로 밖의 권한 600 파일에서 토큰을 읽는다. -->
         <key>KNUASK_ENV_FILE</key>
-        <string>/Users/noseongjun/Library/Application Support/KNU-Ask/worker.env</string>
+        <string>__KNUASK_ENV_FILE__</string>
         <key>KNUASK_API_BASE</key>
         <string>http://localhost:8080/api</string>
     </dict>
@@ -27,8 +27,8 @@
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/noseongjun/Library/Logs/KNU-Ask-codex-worker.log</string>
+    <string>__KNUASK_STDOUT_PATH__</string>
     <key>StandardErrorPath</key>
-    <string>/Users/noseongjun/Library/Logs/KNU-Ask-codex-worker-error.log</string>
+    <string>__KNUASK_STDERR_PATH__</string>
 </dict>
 </plist>

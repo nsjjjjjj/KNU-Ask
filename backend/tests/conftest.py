@@ -8,6 +8,7 @@ os.environ["CODEX_ENRICHMENT_ENABLED"] = "false"
 os.environ["MOCK_CRAWLER"] = "true"
 os.environ["EMBEDDING_PROVIDER"] = "lexical"
 os.environ["CRAWLER_SCHEDULE_ENABLED"] = "false"
+os.environ["CRAWLER_ATTACHMENT_CACHE_DIR"] = "/tmp/knuask-test-attachment-cache"
 os.environ["ADMIN_API_TOKEN"] = "test-only-admin-token-32-characters"
 
 import pytest

@@ -5,14 +5,16 @@ from __future__ import annotations
 
 import re
 import subprocess
+import zipfile
 from pathlib import Path
 
 
 PATTERNS = {
     "private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     "Google API key": re.compile(r"AIza[0-9A-Za-z_-]{30,}"),
-    "OpenAI-style API key": re.compile(r"sk-(?:proj-)?[0-9A-Za-z_-]{20,}"),
+    "OpenAI-style API key": re.compile(r"(?<![0-9A-Za-z])sk-(?:proj-)?[0-9A-Za-z_-]{20,}"),
     "GitHub token": re.compile(r"gh[pousr]_[0-9A-Za-z]{20,}"),
+    "personal absolute home path": re.compile(r"(?:^|[\"'<>])/(?:Users|home)/[^/\s<>]+/", re.MULTILINE),
     "known insecure admin token": re.compile("local" + "-dev-admin"),
     "embedded default database password": re.compile(r"postgresql(?:\+\w+)?://[^\s:]+:knuask@"),
 }
@@ -30,13 +32,22 @@ def tracked_files() -> list[Path]:
 def main() -> int:
     findings: list[str] = []
     for path in tracked_files():
+        texts: list[tuple[str, str]] = []
         try:
-            text = path.read_text(encoding="utf-8")
+            texts.append((str(path), path.read_text(encoding="utf-8")))
         except (UnicodeDecodeError, OSError):
-            continue
-        for label, pattern in PATTERNS.items():
-            if pattern.search(text):
-                findings.append(f"{path}: {label}")
+            if path.suffix.lower() in {".docx", ".pptx", ".xlsx"}:
+                try:
+                    with zipfile.ZipFile(path) as archive:
+                        for member in archive.namelist():
+                            if member.endswith((".xml", ".rels")):
+                                texts.append((f"{path}!{member}", archive.read(member).decode("utf-8", errors="ignore")))
+                except (OSError, zipfile.BadZipFile):
+                    pass
+        for location, text in texts:
+            for label, pattern in PATTERNS.items():
+                if pattern.search(text):
+                    findings.append(f"{location}: {label}")
     if findings:
         print("추적 파일에서 비밀값 후보를 발견했습니다:")
         print("\n".join(f"- {item}" for item in findings))

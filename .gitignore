@@ -17,6 +17,10 @@ htmlcov/
 *.sqlite3
 data/*.log
 data/*.pid
+data/notices.json
+data/reference_pages.json
+data/checkpoints/
+data/attachment-cache/
 
 node_modules/
 frontend/dist/

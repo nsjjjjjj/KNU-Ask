@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     crawler_extract_attachments: bool = True
     crawler_attachment_max_mb: int = 25
     crawler_attachment_cache_ttl_hours: int = 24
-    crawler_attachment_cache_dir: str = "/app/data/attachment-cache"
+    crawler_attachment_cache_dir: str = "/tmp/knuask-attachment-cache"
     crawler_schedule_enabled: bool = True
     crawler_schedule_minutes: int = 60
     crawler_daily_schedule_hour: int = 2
